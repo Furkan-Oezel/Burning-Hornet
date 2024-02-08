@@ -1,0 +1,10 @@
+# Ignore all files
+*
+
+# But not these files...
+!firewall.c
+!main.go
+
+# Additionally, do not ignore the .gitignore file itself
+!.gitignore
+

@@ -18,8 +18,8 @@ func main() {
 	}
 
 	// Load the compiled eBPF ELF and load it into the kernel.
-	var objs counterObjects
-	if err := loadCounterObjects(&objs, nil); err != nil {
+	var objs firewallObjects
+	if err := loadFirewallObjects(&objs, nil); err != nil {
 		log.Fatal("Loading eBPF objects:", err)
 	}
 	defer objs.Close()
@@ -32,7 +32,7 @@ func main() {
 
 	// Attach count_packets to the network interface.
 	link, err := link.AttachXDP(link.XDPOptions{
-		Program:   objs.CountPackets,
+		Program:   objs.XdpFilterIpRange,
 		Interface: iface.Index,
 	})
 	if err != nil {
@@ -42,7 +42,7 @@ func main() {
 
 	log.Printf("Counting incoming packets on %s..", ifname)
 
-	// Periodically fetch the packet counter from PktCount,
+	// Periodically fetch the packet counter from Map(bpf map),
 	// exit the program when interrupted.
 	tick := time.Tick(time.Second)
 	stop := make(chan os.Signal, 5)
@@ -51,11 +51,11 @@ func main() {
 		select {
 		case <-tick:
 			var count uint64
-			err := objs.PktCount.Lookup(uint32(0), &count)
+			err := objs.Map.Lookup(uint32(0), &count)
 			if err != nil {
 				log.Fatal("Map lookup:", err)
 			}
-			log.Printf("Received %d packets", count)
+			log.Printf("Received %b packets", count)
 		case <-stop:
 			log.Print("Received signal, exiting..")
 			return
