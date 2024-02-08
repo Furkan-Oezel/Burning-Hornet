@@ -22,6 +22,18 @@ func main() {
 	if err := loadFirewallObjects(&objs, nil); err != nil {
 		log.Fatal("Loading eBPF objects:", err)
 	}
+
+	mapPath := "/sys/fs/bpf/my_map" // Specify your desired path
+	if err := objs.Map.Pin(mapPath); err != nil {
+		log.Fatalf("Error pinning map: %s", err)
+	}
+
+	defer func() {
+		if err := os.Remove(mapPath); err != nil {
+			log.Printf("Error unpinning map: %s", err)
+		}
+	}()
+
 	defer objs.Close()
 
 	ifname := "eth0" // Change this to an interface on your machine.
