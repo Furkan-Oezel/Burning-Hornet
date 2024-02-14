@@ -27,8 +27,18 @@ int main() {
     close(map_file_descriptor);
     return 1;
   }
+  printf("value: %llu\n", value);
 
-  printf("value: %d\n", value);
+  value += 1;
+  // update the map entry with the new value
+  ret = bpf_map_update_elem(map_file_descriptor, &key, &value, BPF_ANY);
+  if (ret < 0) {
+    perror("Failed to update BPF map");
+    close(map_file_descriptor);
+    return 1;
+  }
+  printf("updated value: %llu\n", value);
+
   // close map
   close(map_file_descriptor);
   return 0;
