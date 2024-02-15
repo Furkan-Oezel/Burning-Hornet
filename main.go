@@ -23,26 +23,28 @@ func main() {
 		log.Fatal("Loading eBPF objects:", err)
 	}
 
-	mapPath := "/sys/fs/bpf/my_map" // Specify your desired path
+	// pin map
+	mapPath := "/sys/fs/bpf/my_map"
 	if err := objs.Map.Pin(mapPath); err != nil {
 		log.Fatalf("Error pinning map: %s", err)
 	}
 
+	// unpin map when the program stops running
 	defer func() {
 		if err := os.Remove(mapPath); err != nil {
 			log.Printf("Error unpinning map: %s", err)
 		}
 	}()
-
 	defer objs.Close()
 
-	ifname := "eth0" // Change this to an interface on your machine.
+	// set the name of the network interface
+	ifname := "eth0"
 	iface, err := net.InterfaceByName(ifname)
 	if err != nil {
 		log.Fatalf("Getting interface %s: %s", ifname, err)
 	}
 
-	// Attach count_packets to the network interface.
+	// Attach the "main function" (xdp_filter_ip_range()) of the bpf program to the network interface.
 	link, err := link.AttachXDP(link.XDPOptions{
 		Program:   objs.XdpFilterIpRange,
 		Interface: iface.Index,
@@ -52,22 +54,48 @@ func main() {
 	}
 	defer link.Close()
 
-	log.Printf("Counting incoming packets on %s..", ifname)
+	log.Printf("Welcome to Furkan's Firewall!")
+	log.Printf("Enjoy your stay and listen on the network interface  %s!", ifname)
 
-	// Periodically fetch the packet counter from Map(bpf map),
+	// Periodically fetch from Map(bpf map),
 	// exit the program when interrupted.
 	tick := time.Tick(time.Second)
 	stop := make(chan os.Signal, 5)
 	signal.Notify(stop, os.Interrupt)
+	log.Printf("working")
 	for {
 		select {
 		case <-tick:
-			var count uint64
-			err := objs.Map.Lookup(uint32(0), &count)
+
+			log.Printf("working")
+			var first_entry uint64
+			var second_entry uint64
+			var third_entry uint64
+
+			log.Printf("working")
+			err := objs.Map.Lookup(uint32(0), &first_entry)
 			if err != nil {
 				log.Fatal("Map lookup:", err)
 			}
-			log.Printf("Received %b packets", count)
+
+			err = objs.Map.Lookup(uint32(1), &second_entry)
+			if err != nil {
+				log.Fatal("Map lookup:", err)
+			}
+
+			err = objs.Map.Lookup(uint32(2), &third_entry)
+			if err != nil {
+				log.Fatal("Map lookup:", err)
+			}
+
+			if third_entry == 1 {
+				log.Printf("Filtering ip source address. Boundaries: 192.168.0.10 - 192.168.0.11")
+				log.Printf("retrieved ip source address: %x", first_entry)
+			} else {
+				log.Printf("retrieved ip source address: %x", first_entry)
+				log.Printf("retrieved ip destination address: %x", second_entry)
+			}
+
 		case <-stop:
 			log.Print("Received signal, exiting..")
 			return

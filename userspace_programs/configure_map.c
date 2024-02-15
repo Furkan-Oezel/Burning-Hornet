@@ -29,7 +29,7 @@ int main() {
   }
   printf("value: %llu\n", value);
 
-  value += 1;
+  value = 1;
   // update the map entry with the new value
   ret = bpf_map_update_elem(map_file_descriptor, &key, &value, BPF_ANY);
   if (ret < 0) {
