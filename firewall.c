@@ -37,13 +37,10 @@ SEC("xdp_prog")
 int xdp_filter_ip_range(struct xdp_md *ctx)
 {
     // declare variables to interact with the map
-    __u32 key;
-    __u64 *value;
-    // declare variable to configure wether the firewall should be filtering
+    __u32 key = 0;
+    __u64 *value = bpf_map_lookup_elem(&Map, &key);
+    // declare variable to configure the behaviour of the firewall
     __u64 config_number;
-    // declare boundaries for ip source address filtering
-    __be32 ip_range_start = htonl(0xC0A8000A); // 192.168.0.10
-    __be32 ip_range_end = htonl(0xC0A8000B);   // 192.168.0.11
 
     // set pointers to the beginning and to the end of the arriving packet
     void *data = (void *)(long)ctx->data;
@@ -59,7 +56,6 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     struct iphdr *ip = data + sizeof(struct ethhdr);
     if ((void *)ip + sizeof(*ip) > data_end)
         return XDP_DROP;
-
     __be32 src_ip = ip->saddr;
     __be32 dst_ip = ip->daddr;
 
@@ -88,7 +84,8 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     switch (config_number)
     {
     case 1:
-        if (src_ip >= ip_range_start && src_ip <= ip_range_end)
+        // boundaries: 192.168.0.10 - 192.168.0.11
+        if (src_ip >= htonl(0xC0A8000A) && src_ip <= htonl(0xC0A8000B))
         {
             // do something
             return XDP_PASS;
@@ -97,12 +94,6 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     default:
         break;
     }
-
-    // // convert 192.168.0.10 from host byte order (little-endian) to network byte order (big-endian)
-    // if (dst_ip == htonl(0xC0A8000A))
-    // {
-    //     // do something
-    // }
 
     return XDP_PASS;
 }

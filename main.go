@@ -38,7 +38,7 @@ func main() {
 	defer objs.Close()
 
 	// set the name of the network interface
-	ifname := "eth0"
+	ifname := "wlp0s20f3"
 	iface, err := net.InterfaceByName(ifname)
 	if err != nil {
 		log.Fatalf("Getting interface %s: %s", ifname, err)
@@ -55,24 +55,21 @@ func main() {
 	defer link.Close()
 
 	log.Printf("Welcome to Furkan's Firewall!")
-	log.Printf("Enjoy your stay and listen on the network interface  %s!", ifname)
+	log.Printf("Enjoy your stay and listen on the network interface %s!", ifname)
 
 	// Periodically fetch from Map(bpf map),
 	// exit the program when interrupted.
 	tick := time.Tick(time.Second)
 	stop := make(chan os.Signal, 5)
 	signal.Notify(stop, os.Interrupt)
-	log.Printf("working")
 	for {
 		select {
 		case <-tick:
 
-			log.Printf("working")
 			var first_entry uint64
 			var second_entry uint64
 			var third_entry uint64
 
-			log.Printf("working")
 			err := objs.Map.Lookup(uint32(0), &first_entry)
 			if err != nil {
 				log.Fatal("Map lookup:", err)
@@ -90,10 +87,10 @@ func main() {
 
 			if third_entry == 1 {
 				log.Printf("Filtering ip source address. Boundaries: 192.168.0.10 - 192.168.0.11")
-				log.Printf("retrieved ip source address: %x", first_entry)
+				log.Printf("ip source address: %b", first_entry)
 			} else {
-				log.Printf("retrieved ip source address: %x", first_entry)
-				log.Printf("retrieved ip destination address: %x", second_entry)
+				log.Printf("ip source address:      %b", first_entry)
+				log.Printf("ip destination address: %b", second_entry)
 			}
 
 		case <-stop:
