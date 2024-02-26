@@ -11,6 +11,8 @@
 #include <linux/ip.h>
 // add functions for network byte order conversions (htonl(), htons(), ntohl(), ntohs())
 #include <netinet/in.h>
+// add struct tcphdr
+#include <linux/tcp.h>
 
 /*=============================================*/
 /*              *map config*                   */
@@ -58,6 +60,10 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
         return XDP_DROP;
     __be32 src_ip = ip->saddr;
     __be32 dst_ip = ip->daddr;
+
+    struct tcphdr *tcp = (struct tcphdr *)(ip + 1);
+    __be16 src_port = tcp->source;
+    __be16 dst_port = tcp->dest;
 
     // set first entry of the map to ip source address
     // set second entry of the map to ip destination address
