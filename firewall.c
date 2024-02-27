@@ -18,9 +18,10 @@
 /*              *map config*                   */
 /* type = array                                */
 /* number of entries = 3                       */
-/* 1. entry = ip source address                */
-/* 2. entry = ip destination addres            */
+/* 1. entry = lower ip boundary                */
+/* 2. entry = upper ip boundary                */
 /* 3. entry = setting for firewall behaviour   */
+/* 4. entry = number of received packets       */
 /*=============================================*/
 struct
 {
@@ -31,7 +32,7 @@ struct
     // declare pointer called 'value' that is of the type '__u64'
     __type(value, __u64);
     // declare pointer called 'max_entries' that points to a int array of the size 3
-    __uint(max_entries, 3);
+    __uint(max_entries, 4);
 } Map SEC(".maps");
 
 SEC("xdp_prog")
@@ -43,6 +44,9 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     __u64 *value = bpf_map_lookup_elem(&Map, &key);
     // declare variable to configure the behaviour of the firewall
     __u64 config_number;
+    // declare ip boundaries
+    __be32 lower_ip_boundary;
+    __be32 upper_ip_boundary;
 
     // set pointers to the beginning and to the end of the arriving packet
     void *data = (void *)(long)ctx->data;
@@ -65,33 +69,35 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     __be16 src_port = tcp->source;
     __be16 dst_port = tcp->dest;
 
-    // set first entry of the map to ip source address
-    // set second entry of the map to ip destination address
     if (value)
     {
         key = 0;
-        *value = src_ip;
-        bpf_map_update_elem(&Map, &key, value, BPF_ANY);
+        value = bpf_map_lookup_elem(&Map, &key);
+        lower_ip_boundary = *value;
 
         key = 1;
-        *value = dst_ip;
-        bpf_map_update_elem(&Map, &key, value, BPF_ANY);
-    }
+        value = bpf_map_lookup_elem(&Map, &key);
+        lower_ip_boundary = *value;
 
-    // retrieve firewall setting and write it into 'config_number'
-    if (value)
-    {
+        // retrieve firewall setting and write it into 'config_number'
         key = 2;
         value = bpf_map_lookup_elem(&Map, &key);
         config_number = *value;
+
+            key = 3;
+            value = bpf_map_lookup_elem(&Map, &key);
+        if (value)
+        {
+            *value = *value  + 1;
+            bpf_map_update_elem(&Map, &key, value, BPF_ANY);
+        }
     }
 
     // implement firewall behaviour based on firewall setting
     switch (config_number)
     {
     case 1:
-        // boundaries: 192.168.0.10 - 192.168.0.11
-        if (src_ip >= htonl(0xC0A8000A) && src_ip <= htonl(0xC0A8000B))
+        if (src_ip >= htonl(lower_ip_boundary) && src_ip <= htonl(upper_ip_boundary))
         {
             // do something
             return XDP_PASS;

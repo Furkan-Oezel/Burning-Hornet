@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"log"
 	"net"
 	"os"
@@ -38,7 +39,7 @@ func main() {
 	defer objs.Close()
 
 	// set the name of the network interface
-	ifname := "wlp0s20f3"
+	ifname := "eth0"
 	iface, err := net.InterfaceByName(ifname)
 	if err != nil {
 		log.Fatalf("Getting interface %s: %s", ifname, err)
@@ -54,8 +55,9 @@ func main() {
 	}
 	defer link.Close()
 
-	log.Printf("Welcome to Furkan's Firewall!")
-	log.Printf("Enjoy your stay and listen on the network interface %s!", ifname)
+	log.Printf("	Welcome to Furkan's Firewall!")
+	log.Printf("	Enjoy your stay and listen on the network interface %s!", ifname)
+	log.Printf("<<<<-------------------------------------------------------->>>>")
 
 	// Periodically fetch from Map(bpf map),
 	// exit the program when interrupted.
@@ -69,6 +71,7 @@ func main() {
 			var first_entry uint64
 			var second_entry uint64
 			var third_entry uint64
+			var fourth_entry uint64
 
 			err := objs.Map.Lookup(uint32(0), &first_entry)
 			if err != nil {
@@ -85,12 +88,29 @@ func main() {
 				log.Fatal("Map lookup:", err)
 			}
 
+			err = objs.Map.Lookup(uint32(3), &fourth_entry)
+			if err != nil {
+				log.Fatal("Map lookup:", err)
+			}
+
+			testIP := uint32(0x102000C0)
+
+			bytes := make([]byte, 4)
+			binary.LittleEndian.PutUint32(bytes, testIP)
+
+			convertedIP := binary.BigEndian.Uint32(bytes)
+
+			ipBytes := make([]byte, 4)
+			binary.BigEndian.PutUint32(ipBytes, convertedIP)
+
+			ip := net.IP(ipBytes)
+
 			if third_entry == 1 {
-				log.Printf("Filtering ip source address. Boundaries: 192.168.0.10 - 192.168.0.11")
-				log.Printf("ip source address: %b", first_entry)
+				log.Printf("%ip address: %s", ip.String())
+				log.Printf("number of received packets: %d", fourth_entry)
 			} else {
-				log.Printf("ip source address:      %b", first_entry)
-				log.Printf("ip destination address: %b", second_entry)
+				log.Printf("waiting for configuration...")
+				log.Printf("============================")
 			}
 
 		case <-stop:
