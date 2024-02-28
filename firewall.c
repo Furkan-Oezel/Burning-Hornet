@@ -43,10 +43,10 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     __u32 key = 0;
     __u64 *value = bpf_map_lookup_elem(&Map, &key);
     // declare ip boundaries
-    __u64 lower_ip_boundary;
-    __u64 upper_ip_boundary;
+    __u64 lower_ip_boundary = 0;
+    __u64 upper_ip_boundary = 0;
     // declare variable to configure the behaviour of the firewall
-    __u64 config_number;
+    __u64 config_number = 0;
 
     // set pointers to the beginning and to the end of the arriving packet
     void *data = (void *)(long)ctx->data;
@@ -56,87 +56,86 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     struct ethhdr *eth = data;
     // e.g. if 0x0006 + 8 > 0x0009, then drop
     if ((void *)eth + sizeof(*eth) > data_end)
+    {
         return XDP_DROP;
+    }
 
     // ip block starts after the eth block
     struct iphdr *ip = data + sizeof(struct ethhdr);
-    if (ip)
+    if ((void *)ip + sizeof(*ip) > data_end)
     {
-        if ((void *)ip + sizeof(*ip) > data_end)
-            return XDP_DROP;
+        return XDP_DROP;
     }
-
     __u64 src_ip = 0;
     __u64 dst_ip = 0;
     if (ip)
     {
+        /* code */
         src_ip = ip->saddr;
         dst_ip = ip->daddr;
     }
 
-    // not sure if this is correct
-    //    struct tcphdr *tcp = (struct tcphdr *)(ip + 1);
-    //    __be16 src_port = tcp->source;
-    //    __be16 dst_port = tcp->dest;
+    struct tcphdr *tcp = (struct tcphdr *)(ip + 1);
+    __be16 src_port = tcp->source;
+    __be16 dst_port = tcp->dest;
+
+    key = 0;
+    value = bpf_map_lookup_elem(&Map, &key);
+    if (value)
+    {
+        lower_ip_boundary = *value;
+    }
+
+    key = 1;
+    value = bpf_map_lookup_elem(&Map, &key);
+    if (value)
+    {
+        upper_ip_boundary = *value;
+    }
+
+    // retrieve firewall setting and write it into 'config_number'
+    key = 2;
+    value = bpf_map_lookup_elem(&Map, &key);
+    if (value)
+    {
+        config_number = *value;
+    }
+
+    key = 3;
+    value = bpf_map_lookup_elem(&Map, &key);
+    if (value)
+    {
+        *value = *value + 1;
+    }
 
     if (value)
     {
-        key = 0;
-        value = bpf_map_lookup_elem(&Map, &key);
-        if (value)
-        {
-            /* code */
-            lower_ip_boundary = htonl(*value);
-        }
-
-        key = 1;
-        value = bpf_map_lookup_elem(&Map, &key);
-        if (value)
-        {
-            upper_ip_boundary = htonl(*value);
-        }
-
-        // retrieve firewall setting and write it into 'config_number'
-        key = 2;
-        value = bpf_map_lookup_elem(&Map, &key);
-        if (value)
-        {
-            config_number = *value;
-        }
-
-        key = 3;
-        value = bpf_map_lookup_elem(&Map, &key);
-        if (value)
-        {
-            *value = *value + 1;
-            if (value)
-            {
-                /* code */
-                bpf_map_update_elem(&Map, &key, value, BPF_ANY);
-            }
-        }
+        bpf_map_update_elem(&Map, &key, value, BPF_ANY);
     }
 
     // implement firewall behaviour based on firewall setting
-
-    switch (config_number)
+    if (config_number != NULL)
     {
-    case 1:
-        if (src_ip >= lower_ip_boundary && src_ip <= upper_ip_boundary)
-        {
-            // do something
-            return XDP_PASS;
-        }
-        else
-        {
-            return XDP_PASS;
-        }
-        break;
+        /* code */
 
-    default:
-        break;
+        switch (config_number)
+        {
+        case 1:
+            if (src_ip >= lower_ip_boundary && src_ip <= upper_ip_boundary)
+            {
+                // do something
+                return XDP_PASS;
+            }
+            else
+            {
+                return XDP_DROP;
+            }
+            break;
+
+        default:
+            break;
+        }
     }
-
     return XDP_DROP;
 }
 
