@@ -57,7 +57,7 @@ func main() {
 
 	log.Printf("	Welcome to Furkan's Firewall!")
 	log.Printf("	Enjoy your stay and listen on the network interface %s!", ifname)
-	log.Printf("<<<<-------------------------------------------------------->>>>")
+	log.Printf("<<<<--------------------------------------------------------->>>>")
 
 	// Periodically fetch from Map(bpf map),
 	// exit the program when interrupted.
