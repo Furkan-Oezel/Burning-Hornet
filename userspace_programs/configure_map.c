@@ -9,7 +9,7 @@
 int main() {
   int map_file_descriptor;
   int ret;
-  __u32 key = 2;
+  __u32 key = 3;
   __u64 value;
 
   // open map

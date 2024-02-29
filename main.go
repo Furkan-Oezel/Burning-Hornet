@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"log"
 	"net"
 	"os"
@@ -55,7 +54,8 @@ func main() {
 	}
 	defer link.Close()
 
-	log.Printf("	Welcome to Furkan's Firewall!")
+	log.Printf("<<<<--------------------------------------------------------->>>>")
+	log.Printf("	              Welcome to Furkan's Firewall!")
 	log.Printf("	Enjoy your stay and listen on the network interface %s!", ifname)
 	log.Printf("<<<<--------------------------------------------------------->>>>")
 
@@ -68,53 +68,57 @@ func main() {
 		select {
 		case <-tick:
 
-			var first_entry uint64
-			var second_entry uint64
-			var third_entry uint64
-			var fourth_entry uint64
+			var ip_source_addres uint64
+			var lower_ip_boundary uint64
+			var upper_ip_boundary uint64
+			var config_number uint64
+			var crazy_counter uint64
 
-			err := objs.Map.Lookup(uint32(0), &first_entry)
+			err := objs.Map.Lookup(uint32(0), &ip_source_addres)
 			if err != nil {
 				log.Fatal("Map lookup:", err)
 			}
 
-			err = objs.Map.Lookup(uint32(1), &second_entry)
+			err = objs.Map.Lookup(uint32(1), &lower_ip_boundary)
 			if err != nil {
 				log.Fatal("Map lookup:", err)
 			}
 
-			err = objs.Map.Lookup(uint32(2), &third_entry)
+			err = objs.Map.Lookup(uint32(2), &upper_ip_boundary)
 			if err != nil {
 				log.Fatal("Map lookup:", err)
 			}
 
-			err = objs.Map.Lookup(uint32(3), &fourth_entry)
+			err = objs.Map.Lookup(uint32(3), &config_number)
 			if err != nil {
 				log.Fatal("Map lookup:", err)
 			}
 
-			testIP := uint32(0x102000C0)
+			err = objs.Map.Lookup(uint32(4), &crazy_counter)
+			if err != nil {
+				log.Fatal("Map lookup:", err)
+			}
 
-			bytes := make([]byte, 4)
-			binary.LittleEndian.PutUint32(bytes, testIP)
+			if config_number == 1 {
+				lower_ip := convert_little_to_big(lower_ip_boundary)
+				upper_ip := convert_little_to_big(upper_ip_boundary)
+				log.Printf("    _________________________________________________________")
+				log.Printf("    ip range: %s <-> %s", lower_ip.String(), upper_ip.String())
 
-			convertedIP := binary.BigEndian.Uint32(bytes)
+				log.Printf("    _________________________________________________________")
+				log.Printf("    number of accepted packets: %d", crazy_counter)
 
-			ipBytes := make([]byte, 4)
-			binary.BigEndian.PutUint32(ipBytes, convertedIP)
+				source_ip := convert_little_to_big(ip_source_addres)
+				log.Printf("    _________________________________________________________")
+				log.Printf("    accepted ip : %s", source_ip.String())
 
-			ip := net.IP(ipBytes)
-
-			if third_entry == 1 {
-				log.Printf("%ip address: %s", ip.String())
-				log.Printf("number of received packets: %d", fourth_entry)
+				log.Printf("")
 			} else {
-				log.Printf("waiting for configuration...")
-				log.Printf("============================")
+				log.Printf("    waiting for configuration...")
 			}
 
 		case <-stop:
-			log.Print("Received signal, exiting..")
+			log.Print("Received signal, exiting...")
 			return
 		}
 	}

@@ -17,11 +17,12 @@
 /*=============================================*/
 /*              *map config*                   */
 /* type = array                                */
-/* number of entries = 3                       */
-/* 1. entry = lower ip boundary                */
-/* 2. entry = upper ip boundary                */
-/* 3. entry = setting for firewall behaviour   */
-/* 4. entry = number of received packets       */
+/* number of entries = 5                       */
+/* 1. entry = ip source address                */
+/* 2. entry = lower ip boundary (source)       */
+/* 3. entry = upper ip boundary (source)       */
+/* 4. entry = setting for firewall behaviour   */
+/* 5. entry = number of received packets       */
 /*=============================================*/
 struct
 {
@@ -32,7 +33,7 @@ struct
     // declare pointer called 'value' that is of the type '__u64'
     __type(value, __u64);
     // declare pointer called 'max_entries' that points to a int array of the size 3
-    __uint(max_entries, 4);
+    __uint(max_entries, 5);
 } Map SEC(".maps");
 
 SEC("xdp_prog")
@@ -42,7 +43,7 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     // declare variables to interact with the map
     __u32 key = 0;
     __u64 *value = bpf_map_lookup_elem(&Map, &key);
-    // declare ip boundaries
+    // declare ip boundaries for source address
     __u64 lower_ip_boundary = 0;
     __u64 upper_ip_boundary = 0;
     // declare variable to configure the behaviour of the firewall
@@ -66,27 +67,23 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     {
         return XDP_DROP;
     }
-    __u64 src_ip = 0;
-    __u64 dst_ip = 0;
-    if (ip)
-    {
-        /* code */
-        src_ip = ip->saddr;
-        dst_ip = ip->daddr;
-    }
+    __u64 src_ip = ip->saddr;
+    __u64 dst_ip = ip->daddr;
 
     struct tcphdr *tcp = (struct tcphdr *)(ip + 1);
     __be16 src_port = tcp->source;
     __be16 dst_port = tcp->dest;
 
-    key = 0;
+    // retrieve lower ip boundary from map
+    key = 1;
     value = bpf_map_lookup_elem(&Map, &key);
     if (value)
     {
         lower_ip_boundary = *value;
     }
 
-    key = 1;
+    // retrieve upper ip boundary from map
+    key = 2;
     value = bpf_map_lookup_elem(&Map, &key);
     if (value)
     {
@@ -94,49 +91,54 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     }
 
     // retrieve firewall setting and write it into 'config_number'
-    key = 2;
+    key = 3;
     value = bpf_map_lookup_elem(&Map, &key);
     if (value)
     {
         config_number = *value;
     }
 
-    key = 3;
-    value = bpf_map_lookup_elem(&Map, &key);
-    if (value)
-    {
-        *value = *value + 1;
-    }
-
-    if (value)
-    {
-        bpf_map_update_elem(&Map, &key, value, BPF_ANY);
-    }
-
     // implement firewall behaviour based on firewall setting
-    if (config_number != NULL)
+    switch (config_number)
     {
-        /* code */
-
-        switch (config_number)
+    case 1:
+        if (src_ip >= lower_ip_boundary && src_ip <= upper_ip_boundary)
         {
-        case 1:
-            if (src_ip >= lower_ip_boundary && src_ip <= upper_ip_boundary)
+            // store packet ip source address into the first entry of the map
+            key = 0;
+            value = bpf_map_lookup_elem(&Map, &key);
+            if (value)
             {
-                // do something
-                return XDP_PASS;
+                *value = src_ip;
             }
-            else
+            if (value)
             {
-                return XDP_DROP;
+                bpf_map_update_elem(&Map, &key, value, BPF_ANY);
             }
-            break;
 
-        default:
-            break;
+            // count accepted packets
+            key = 4;
+            value = bpf_map_lookup_elem(&Map, &key);
+            if (value)
+            {
+                *value = *value + 1;
+            }
+            if (value)
+            {
+                bpf_map_update_elem(&Map, &key, value, BPF_ANY);
+            }
+            return XDP_PASS;
         }
+        else
+        {
+            return XDP_DROP;
+        }
+        break;
+    default:
+        break;
     }
-    return XDP_DROP;
+
+    return XDP_PASS;
 }
 
 char _license[] SEC("license") = "GPL";
