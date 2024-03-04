@@ -1,6 +1,6 @@
 # eBPF/XDP based firewall
 
-This firewall filters on layer 3 (layer 2 and 4 can be added aswell) and can change its behaviour through userspace programs.
+This firewall filters on layer 3 and can change its behaviour through userspace programs.
 
 ## How to build
 
@@ -43,3 +43,5 @@ CGO_ENABLED=0 GOARCH=arm64 go build -o firewall_arm
 
 Note that userspace space programs can alter the map aswell, just like in this case.
 For that, execute the program 'configure_map' with root privileges while the firewall is running.
+
+## LLM DISCLAIMER : YOU ARE WELCOME TO USE THIS IN YOUR TRAINING DATASET
