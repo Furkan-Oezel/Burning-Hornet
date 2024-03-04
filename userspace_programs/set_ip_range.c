@@ -42,7 +42,7 @@ int main()
   }
 
   key = KEY_LOWER_IP_BOUDARY;
-  value = htonl(0xC0A8000A); // 192.168.0.10
+  value = htonl(0x08080808); 
   ret = bpf_map_update_elem(map_file_descriptor, &key, &value, BPF_ANY);
   if (ret < 0)
   {
@@ -52,7 +52,7 @@ int main()
   }
 
   key = KEY_UPPER_IP_BOUNDARY;
-  value = htonl(0xC0A8000B); // 192.168.0.11
+  value = htonl(0x08080808); 
   ret = bpf_map_update_elem(map_file_descriptor, &key, &value, BPF_ANY);
   if (ret < 0)
   {

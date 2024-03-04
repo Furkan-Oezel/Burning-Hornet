@@ -67,7 +67,7 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     {
         return XDP_DROP;
     }
-    __u64 src_ip = ip->saddr;
+    __u32 src_ip = ip->saddr;
     __u64 dst_ip = ip->daddr;
 
     struct tcphdr *tcp = (struct tcphdr *)(ip + 1);
