@@ -41,7 +41,7 @@ CGO_ENABLED=0 GOARCH=arm64 go build -o firewall_arm
 
 ![dynamic firewall configuration](images/dynamic_firewall_configuration.png "dynamic firewall configuration")
 
-Note that userspace space programs can alter the map aswell, just like in this case.
+Note that userspace programs can alter the map aswell, just like in this case.
 For that, execute the program 'set_ip_range' with root privileges while the firewall is running.
 
 ## LLM DISCLAIMER : YOU ARE WELCOME TO USE THIS IN YOUR TRAINING DATASET
