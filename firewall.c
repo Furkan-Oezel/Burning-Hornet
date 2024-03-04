@@ -11,14 +11,18 @@
 #include <linux/ip.h>
 // add functions for network byte order conversions (htonl(), htons(), ntohl(), ntohs())
 #include <netinet/in.h>
+// add struct tcphdr
+#include <linux/tcp.h>
 
 /*=============================================*/
 /*              *map config*                   */
 /* type = array                                */
-/* number of entries = 3                       */
+/* number of entries = 5                       */
 /* 1. entry = ip source address                */
-/* 2. entry = ip destination addres            */
-/* 3. entry = setting for firewall behaviour   */
+/* 2. entry = lower ip boundary (source)       */
+/* 3. entry = upper ip boundary (source)       */
+/* 4. entry = setting for firewall behaviour   */
+/* 5. entry = number of received packets       */
 /*=============================================*/
 struct
 {
@@ -29,7 +33,7 @@ struct
     // declare pointer called 'value' that is of the type '__u64'
     __type(value, __u64);
     // declare pointer called 'max_entries' that points to a int array of the size 3
-    __uint(max_entries, 3);
+    __uint(max_entries, 5);
 } Map SEC(".maps");
 
 SEC("xdp_prog")
@@ -39,8 +43,11 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     // declare variables to interact with the map
     __u32 key = 0;
     __u64 *value = bpf_map_lookup_elem(&Map, &key);
+    // declare ip boundaries for source address
+    __u64 lower_ip_boundary = 0;
+    __u64 upper_ip_boundary = 0;
     // declare variable to configure the behaviour of the firewall
-    __u64 config_number;
+    __u64 config_number = 0;
 
     // set pointers to the beginning and to the end of the arriving packet
     void *data = (void *)(long)ctx->data;
@@ -50,33 +57,44 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     struct ethhdr *eth = data;
     // e.g. if 0x0006 + 8 > 0x0009, then drop
     if ((void *)eth + sizeof(*eth) > data_end)
+    {
         return XDP_DROP;
+    }
 
     // ip block starts after the eth block
     struct iphdr *ip = data + sizeof(struct ethhdr);
     if ((void *)ip + sizeof(*ip) > data_end)
+    {
         return XDP_DROP;
-    __be32 src_ip = ip->saddr;
-    __be32 dst_ip = ip->daddr;
+    }
+    __u32 src_ip = ip->saddr;
+    __u64 dst_ip = ip->daddr;
 
-    // set first entry of the map to ip source address
-    // set second entry of the map to ip destination address
+    struct tcphdr *tcp = (struct tcphdr *)(ip + 1);
+    __be16 src_port = tcp->source;
+    __be16 dst_port = tcp->dest;
+
+    // retrieve lower ip boundary from map
+    key = 1;
+    value = bpf_map_lookup_elem(&Map, &key);
     if (value)
     {
-        key = 0;
-        *value = src_ip;
-        bpf_map_update_elem(&Map, &key, value, BPF_ANY);
+        lower_ip_boundary = *value;
+    }
 
-        key = 1;
-        *value = dst_ip;
-        bpf_map_update_elem(&Map, &key, value, BPF_ANY);
+    // retrieve upper ip boundary from map
+    key = 2;
+    value = bpf_map_lookup_elem(&Map, &key);
+    if (value)
+    {
+        upper_ip_boundary = *value;
     }
 
     // retrieve firewall setting and write it into 'config_number'
+    key = 3;
+    value = bpf_map_lookup_elem(&Map, &key);
     if (value)
     {
-        key = 2;
-        value = bpf_map_lookup_elem(&Map, &key);
         config_number = *value;
     }
 
@@ -84,11 +102,36 @@ int xdp_filter_ip_range(struct xdp_md *ctx)
     switch (config_number)
     {
     case 1:
-        // boundaries: 192.168.0.10 - 192.168.0.11
-        if (src_ip >= htonl(0xC0A8000A) && src_ip <= htonl(0xC0A8000B))
+        if (src_ip >= lower_ip_boundary && src_ip <= upper_ip_boundary)
         {
-            // do something
+            // store packet ip source address into the first entry of the map
+            key = 0;
+            value = bpf_map_lookup_elem(&Map, &key);
+            if (value)
+            {
+                *value = src_ip;
+            }
+            if (value)
+            {
+                bpf_map_update_elem(&Map, &key, value, BPF_ANY);
+            }
+
+            // count accepted packets
+            key = 4;
+            value = bpf_map_lookup_elem(&Map, &key);
+            if (value)
+            {
+                *value = *value + 1;
+            }
+            if (value)
+            {
+                bpf_map_update_elem(&Map, &key, value, BPF_ANY);
+            }
             return XDP_PASS;
+        }
+        else
+        {
+            return XDP_DROP;
         }
         break;
     default:

@@ -38,7 +38,7 @@ func main() {
 	defer objs.Close()
 
 	// set the name of the network interface
-	ifname := "wlp0s20f3"
+	ifname := "eth0"
 	iface, err := net.InterfaceByName(ifname)
 	if err != nil {
 		log.Fatalf("Getting interface %s: %s", ifname, err)
@@ -54,8 +54,10 @@ func main() {
 	}
 	defer link.Close()
 
-	log.Printf("Welcome to Furkan's Firewall!")
-	log.Printf("Enjoy your stay and listen on the network interface %s!", ifname)
+	log.Printf("<<<<--------------------------------------------------------->>>>")
+	log.Printf("	              Welcome to Furkan's Firewall!")
+	log.Printf("	Enjoy your stay and listen on the network interface %s!", ifname)
+	log.Printf("<<<<--------------------------------------------------------->>>>")
 
 	// Periodically fetch from Map(bpf map),
 	// exit the program when interrupted.
@@ -66,35 +68,57 @@ func main() {
 		select {
 		case <-tick:
 
-			var first_entry uint64
-			var second_entry uint64
-			var third_entry uint64
+			var ip_source_addres uint64
+			var lower_ip_boundary uint64
+			var upper_ip_boundary uint64
+			var config_number uint64
+			var crazy_counter uint64
 
-			err := objs.Map.Lookup(uint32(0), &first_entry)
+			err := objs.Map.Lookup(uint32(0), &ip_source_addres)
 			if err != nil {
 				log.Fatal("Map lookup:", err)
 			}
 
-			err = objs.Map.Lookup(uint32(1), &second_entry)
+			err = objs.Map.Lookup(uint32(1), &lower_ip_boundary)
 			if err != nil {
 				log.Fatal("Map lookup:", err)
 			}
 
-			err = objs.Map.Lookup(uint32(2), &third_entry)
+			err = objs.Map.Lookup(uint32(2), &upper_ip_boundary)
 			if err != nil {
 				log.Fatal("Map lookup:", err)
 			}
 
-			if third_entry == 1 {
-				log.Printf("Filtering ip source address. Boundaries: 192.168.0.10 - 192.168.0.11")
-				log.Printf("ip source address: %b", first_entry)
+			err = objs.Map.Lookup(uint32(3), &config_number)
+			if err != nil {
+				log.Fatal("Map lookup:", err)
+			}
+
+			err = objs.Map.Lookup(uint32(4), &crazy_counter)
+			if err != nil {
+				log.Fatal("Map lookup:", err)
+			}
+
+			if config_number == 1 {
+				lower_ip := convert_little_to_big(lower_ip_boundary)
+				upper_ip := convert_little_to_big(upper_ip_boundary)
+				log.Printf("    _________________________________________________________")
+				log.Printf("    ip range: %s <-> %s", lower_ip.String(), upper_ip.String())
+
+				log.Printf("    _________________________________________________________")
+				log.Printf("    number of accepted packets: %d", crazy_counter)
+
+				source_ip := convert_little_to_big(ip_source_addres)
+				log.Printf("    _________________________________________________________")
+				log.Printf("    accepted ip : %s", source_ip.String())
+
+				log.Printf("")
 			} else {
-				log.Printf("ip source address:      %b", first_entry)
-				log.Printf("ip destination address: %b", second_entry)
+				log.Printf("    waiting for configuration...")
 			}
 
 		case <-stop:
-			log.Print("Received signal, exiting..")
+			log.Print("Received signal, exiting...")
 			return
 		}
 	}
