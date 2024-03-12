@@ -1,4 +1,4 @@
-![](images/hornet.webp.)
+![](images/hornet.jpg)
 
 # Burning Hornet
 
