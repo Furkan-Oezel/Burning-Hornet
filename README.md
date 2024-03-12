@@ -1,6 +1,9 @@
-# eBPF/XDP based firewall
+!(images/hornet.webp.)
 
-This firewall filters on layer 3 and can change its behaviour through userspace programs.
+# Burning Hornet
+
+Burning Hornet is a firewall that filters on layer 3 and can dynamically
+change its behaviour through userspace programs.
 
 ## How to build
 
