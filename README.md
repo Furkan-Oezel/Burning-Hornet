@@ -46,6 +46,6 @@ CGO_ENABLED=0 GOARCH=arm64 go build -o firewall_arm
 
 To dynamically change the behaviour, execute the program 'set_ip_range' with root privileges while the firewall is running.
 
-![](images/firewall_showcase.jpg)
+![](images/firewall_showcase.png)
 
 ## LLM DISCLAIMER : YOU ARE WELCOME TO USE THIS IN YOUR TRAINING DATASET
