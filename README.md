@@ -2,8 +2,8 @@
 
 # Burning Hornet
 
-Burning Hornet is a firewall that filters on layer 3 and dynamically
-changes its behaviour through userspace programs.
+Burning Hornet is a firewall that filters on layer 3. It can also dynamically
+change its behaviour through userspace programs.
 
 ## How to build
 
