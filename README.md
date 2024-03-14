@@ -10,8 +10,8 @@ change its behaviour through userspace programs.
 Clone this repo and cd into it:
 
 ```bash
-git clone https://github.com/Furkan-Oezel/eBPF_XDP_based_firewall.git
-cd eBPF_XDP_based_firewall
+git clone https://github.com/Furkan-Oezel/Burning-Hornet.git
+cd Burning-Hornet
 ```
 
 Declare a go module:
